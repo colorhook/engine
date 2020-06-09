@@ -107,6 +107,8 @@ source_set("ui") {
     "window/viewport_metrics.h",
     "window/window.cc",
     "window/window.h",
+    "media/media.h",
+    "media/media.cc",
   ]
 
   public_configs = [ "$flutter_root:config" ]
