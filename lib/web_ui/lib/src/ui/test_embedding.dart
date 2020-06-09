@@ -4,6 +4,7 @@
 
 // TODO(flutter_web): the Web-only API below need to be cleaned up.
 
+// @dart = 2.6
 part of ui;
 
 /// Used to track when the platform is initialized. This ensures the test fonts
@@ -12,8 +13,8 @@ Future<void> _testPlatformInitializedFuture;
 
 /// If the platform is already initialized (by a previous test), then run the test
 /// body immediately. Otherwise, initialize the platform then run the test.
-Future<dynamic> ensureTestPlatformInitializedThenRunTest(
-    dynamic Function() body) {
+Future<dynamic>/*!*/ ensureTestPlatformInitializedThenRunTest(
+    dynamic Function()/*!*/ body) {
   if (_testPlatformInitializedFuture == null) {
     debugEmulateFlutterTesterEnvironment = true;
 
@@ -26,10 +27,11 @@ Future<dynamic> ensureTestPlatformInitializedThenRunTest(
 
 /// Used to track when the platform is initialized. This ensures the test fonts
 /// are available.
-Future<void> _platformInitializedFuture;
+// TODO(yjbanov): can we make this late non-null? See https://github.com/dart-lang/sdk/issues/42214
+Future<void>/*?*/ _platformInitializedFuture;
 
-/// Initializes domRenderer with specific devicePixelRation and physicalSize.
-Future<void> webOnlyInitializeTestDomRenderer({double devicePixelRatio = 3.0}) {
+/// Initializes domRenderer with specific devicePixelRatio and physicalSize.
+Future<void>/*!*/ webOnlyInitializeTestDomRenderer({double/*!*/ devicePixelRatio = 3.0}) {
   // Force-initialize DomRenderer so it doesn't overwrite test pixel ratio.
   engine.domRenderer;
 
@@ -39,7 +41,7 @@ Future<void> webOnlyInitializeTestDomRenderer({double devicePixelRatio = 3.0}) {
   engine.window.debugOverrideDevicePixelRatio(devicePixelRatio);
   engine.window.webOnlyDebugPhysicalSizeOverride =
       Size(800 * devicePixelRatio, 600 * devicePixelRatio);
-  webOnlyScheduleFrameCallback = () {};
+  engine.scheduleFrameCallback = () {};
   debugEmulateFlutterTesterEnvironment = true;
 
   if (_platformInitializedFuture != null) {

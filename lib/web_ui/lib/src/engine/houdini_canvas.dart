@@ -7,6 +7,7 @@
 // - avoid producing DOM-based clips if there is no text
 // - evaluate using stylesheets for static CSS properties
 // - evaluate reusing houdini canvases
+// @dart = 2.6
 part of engine;
 
 /// A canvas that renders to a combination of HTML DOM and CSS Custom Paint API.
@@ -229,10 +230,18 @@ class HoudiniCanvas extends EngineCanvas with SaveElementStackTracking {
   }
 
   @override
-  void drawVertices(ui.Vertices vertices, ui.BlendMode blendMode,
-      SurfacePaintData paint) {
+  void drawVertices(
+      ui.Vertices vertices, ui.BlendMode blendMode, SurfacePaintData paint) {
     // TODO(flutter_web): implement.
   }
+
+  @override
+  void drawPoints(ui.PointMode pointMode, Float32List points, SurfacePaintData paint) {
+    // TODO(flutter_web): implement.
+  }
+
+  @override
+  void endOfPaint() {}
 }
 
 class _SaveElementStackEntry {
@@ -344,7 +353,7 @@ mixin SaveElementStackTracking on EngineCanvas {
     // DO NOT USE Matrix4.skew(sx, sy)! It treats sx and sy values as radians,
     // but in our case they are transform matrix values.
     final Matrix4 skewMatrix = Matrix4.identity();
-    final Float64List storage = skewMatrix.storage;
+    final Float32List storage = skewMatrix.storage;
     storage[1] = sy;
     storage[4] = sx;
     _currentTransform.multiply(skewMatrix);
@@ -354,7 +363,7 @@ mixin SaveElementStackTracking on EngineCanvas {
   ///
   /// Classes that override this method must call `super.transform()`.
   @override
-  void transform(Float64List matrix4) {
-    _currentTransform.multiply(Matrix4.fromFloat64List(matrix4));
+  void transform(Float32List matrix4) {
+    _currentTransform.multiply(Matrix4.fromFloat32List(matrix4));
   }
 }

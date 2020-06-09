@@ -10,6 +10,7 @@
 #include "flutter/fml/synchronization/waitable_event.h"
 #include "flutter/shell/common/shell_io_manager.h"
 #include "flutter/shell/gpu/gpu_surface_gl_delegate.h"
+#include "flutter/shell/platform/android/android_context.h"
 #include "flutter/shell/platform/android/android_external_texture_gl.h"
 #include "flutter/shell/platform/android/android_surface_gl.h"
 #include "flutter/shell/platform/android/platform_message_response_android.h"
@@ -24,8 +25,18 @@ PlatformViewAndroid::PlatformViewAndroid(
     fml::jni::JavaObjectWeakGlobalRef java_object,
     bool use_software_rendering)
     : PlatformView(delegate, std::move(task_runners)),
-      java_object_(java_object),
-      android_surface_(AndroidSurface::Create(use_software_rendering)) {
+      java_object_(java_object) {
+  std::shared_ptr<AndroidContext> android_context;
+  if (use_software_rendering) {
+    android_context = AndroidContext::Create(AndroidRenderingAPI::kSoftware);
+  } else {
+#if SHELL_ENABLE_VULKAN
+    android_context = AndroidContext::Create(AndroidRenderingAPI::kVulkan);
+#else   // SHELL_ENABLE_VULKAN
+    android_context = AndroidContext::Create(AndroidRenderingAPI::kOpenGLES);
+#endif  // SHELL_ENABLE_VULKAN
+  }
+  android_surface_ = AndroidSurface::Create(android_context);
   FML_CHECK(android_surface_)
       << "Could not create an OpenGL, Vulkan or Software surface to setup "
          "rendering.";
@@ -48,7 +59,7 @@ void PlatformViewAndroid::NotifyCreated(
 
     fml::AutoResetWaitableEvent latch;
     fml::TaskRunner::RunNowOrPostTask(
-        task_runners_.GetGPUTaskRunner(),
+        task_runners_.GetRasterTaskRunner(),
         [&latch, surface = android_surface_.get(),
          native_window = std::move(native_window)]() {
           surface->SetNativeWindow(native_window);
@@ -66,7 +77,7 @@ void PlatformViewAndroid::NotifyDestroyed() {
   if (android_surface_) {
     fml::AutoResetWaitableEvent latch;
     fml::TaskRunner::RunNowOrPostTask(
-        task_runners_.GetGPUTaskRunner(),
+        task_runners_.GetRasterTaskRunner(),
         [&latch, surface = android_surface_.get()]() {
           surface->TeardownOnScreenContext();
           latch.Signal();
@@ -81,7 +92,7 @@ void PlatformViewAndroid::NotifyChanged(const SkISize& size) {
   }
   fml::AutoResetWaitableEvent latch;
   fml::TaskRunner::RunNowOrPostTask(
-      task_runners_.GetGPUTaskRunner(),  //
+      task_runners_.GetRasterTaskRunner(),  //
       [&latch, surface = android_surface_.get(), size]() {
         surface->OnScreenSurfaceResize(size);
         latch.Signal();
@@ -247,6 +258,14 @@ void PlatformViewAndroid::UpdateSemantics(
           value.second.customAccessibilityActions.size() * kBytesPerChild;
     }
 
+    // The encoding defined here is used in:
+    //
+    //  * AccessibilityBridge.java
+    //  * AccessibilityBridgeTest.java
+    //  * accessibility_bridge.mm
+    //
+    // If any of the encoding structure or length is changed, those locations
+    // must be updated (at a minimum).
     std::vector<uint8_t> buffer(num_bytes);
     int32_t* buffer_int32 = reinterpret_cast<int32_t*>(&buffer[0]);
     float* buffer_float32 = reinterpret_cast<float*>(&buffer[0]);
@@ -306,7 +325,7 @@ void PlatformViewAndroid::UpdateSemantics(
       buffer_float32[position++] = node.rect.top();
       buffer_float32[position++] = node.rect.right();
       buffer_float32[position++] = node.rect.bottom();
-      node.transform.asColMajorf(&buffer_float32[position]);
+      node.transform.getColMajor(&buffer_float32[position]);
       position += 16;
 
       buffer_int32[position++] = node.childrenInTraversalOrder.size();

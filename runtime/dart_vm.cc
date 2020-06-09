@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 #include "flutter/common/settings.h"
@@ -24,7 +25,6 @@
 #include "flutter/runtime/dart_isolate.h"
 #include "flutter/runtime/dart_service_isolate.h"
 #include "flutter/runtime/ptrace_ios.h"
-#include "flutter/runtime/start_up.h"
 #include "third_party/dart/runtime/include/bin/dart_io_api.h"
 #include "third_party/skia/include/core/SkExecutor.h"
 #include "third_party/tonic/converter/dart_converter.h"
@@ -110,6 +110,12 @@ static const char* kDartFuchsiaTraceArgs[] FML_ALLOW_UNUSED_TYPE = {
 static const char* kDartTraceStreamsArgs[] = {
     "--timeline_streams=Compiler,Dart,Debugger,Embedder,GC,Isolate,VM,API",
 };
+
+static std::string DartOldGenHeapSizeArgs(uint64_t heap_size) {
+  std::ostringstream oss;
+  oss << "--old_gen_heap_size=" << heap_size;
+  return oss.str();
+}
 
 constexpr char kFileUriPrefix[] = "file://";
 constexpr size_t kFileUriPrefixLength = sizeof(kFileUriPrefix) - 1;
@@ -275,9 +281,6 @@ DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
   FML_DCHECK(isolate_name_server_);
   FML_DCHECK(service_protocol_);
 
-  FML_DLOG(INFO) << "Attempting Dart VM launch for mode: "
-                 << (IsRunningPrecompiledCode() ? "AOT" : "Interpreter");
-
   {
     TRACE_EVENT0("flutter", "dart::bin::BootstrapDartIo");
     dart::bin::BootstrapDartIo();
@@ -366,7 +369,15 @@ DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
     PushBackAll(&args, kDartTraceStartupArgs, fml::size(kDartTraceStartupArgs));
   }
 
-#if defined(OS_FUCHSIA)
+  std::string old_gen_heap_size_args;
+  if (settings_.old_gen_heap_size >= 0) {
+    old_gen_heap_size_args =
+        DartOldGenHeapSizeArgs(settings_.old_gen_heap_size);
+    args.push_back(old_gen_heap_size_args.c_str());
+  }
+
+#if defined(OS_FUCHSIA) && \
+    (FLUTTER_RUNTIME_MODE != FLUTTER_RUNTIME_MODE_PROFILE)
   PushBackAll(&args, kDartFuchsiaTraceArgs, fml::size(kDartFuchsiaTraceArgs));
   PushBackAll(&args, kDartTraceStreamsArgs, fml::size(kDartTraceStreamsArgs));
 #endif
@@ -414,14 +425,15 @@ DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
     // the very first frame gives us a good idea about Flutter's startup time.
     // Use a duration event so about:tracing will consider this event when
     // deciding the earliest event to use as time 0.
-    if (engine_main_enter_ts != 0) {
-      Dart_TimelineEvent("FlutterEngineMainEnter",  // label
-                         engine_main_enter_ts,      // timestamp0
-                         Dart_TimelineGetMicros(),  // timestamp1_or_async_id
-                         Dart_Timeline_Event_Duration,  // event type
-                         0,                             // argument_count
-                         nullptr,                       // argument_names
-                         nullptr                        // argument_values
+    if (settings_.engine_start_timestamp.count()) {
+      Dart_TimelineEvent(
+          "FlutterEngineMainEnter",                  // label
+          settings_.engine_start_timestamp.count(),  // timestamp0
+          Dart_TimelineGetMicros(),                  // timestamp1_or_async_id
+          Dart_Timeline_Event_Duration,              // event type
+          0,                                         // argument_count
+          nullptr,                                   // argument_names
+          nullptr                                    // argument_values
       );
     }
   }
@@ -441,9 +453,6 @@ DartVM::DartVM(std::shared_ptr<const DartVMData> vm_data,
     Dart_SetDartLibrarySourcesKernel(dart_library_sources->GetMapping(),
                                      dart_library_sources->GetSize());
   }
-
-  FML_DLOG(INFO) << "New Dart VM instance created. Instance count: "
-                 << gVMLaunchCount;
 }
 
 DartVM::~DartVM() {
@@ -463,9 +472,6 @@ DartVM::~DartVM() {
       << "Could not cleanly shut down the Dart VM. Error: \"" << result
       << "\".";
   free(result);
-
-  FML_DLOG(INFO) << "Dart VM instance destroyed. Instance count: "
-                 << gVMLaunchCount;
 }
 
 std::shared_ptr<const DartVMData> DartVM::GetVMData() const {
@@ -487,6 +493,10 @@ std::shared_ptr<IsolateNameServer> DartVM::GetIsolateNameServer() const {
 std::shared_ptr<fml::ConcurrentTaskRunner>
 DartVM::GetConcurrentWorkerTaskRunner() const {
   return concurrent_message_loop_->GetTaskRunner();
+}
+
+std::shared_ptr<fml::ConcurrentMessageLoop> DartVM::GetConcurrentMessageLoop() {
+  return concurrent_message_loop_;
 }
 
 }  // namespace flutter

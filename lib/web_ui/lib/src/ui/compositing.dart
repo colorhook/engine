@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.6
 part of ui;
 
 /// An opaque object representing a composited scene.
@@ -13,7 +14,7 @@ part of ui;
 abstract class Scene {
   /// Creates a raster image representation of the current state of the scene.
   /// This is a slow operation that is performed on a background thread.
-  Future<Image> toImage(int width, int height);
+  Future<Image/*!*/>/*!*/ toImage(int width, int height);
 
   /// Releases the resources used by this scene.
   ///
@@ -74,6 +75,13 @@ abstract class OpacityEngineLayer implements EngineLayer {}
 /// {@macro dart.ui.sceneBuilder.oldLayerCompatibility}
 abstract class ColorFilterEngineLayer implements EngineLayer {}
 
+/// An opaque handle to an image filter engine layer.
+///
+/// Instances of this class are created by [SceneBuilder.pushImageFilter].
+///
+/// {@macro dart.ui.sceneBuilder.oldLayerCompatibility}
+abstract class ImageFilterEngineLayer implements EngineLayer {}
+
 /// An opaque handle to a backdrop filter engine layer.
 ///
 /// Instances of this class are created by [SceneBuilder.pushBackdropFilter].
@@ -117,16 +125,21 @@ abstract class SceneBuilder {
   /// This is equivalent to [pushTransform] with a matrix with only translation.
   ///
   /// See [pop] for details about the operation stack.
-  OffsetEngineLayer pushOffset(double dx, double dy,
-      {OffsetEngineLayer oldLayer});
+  OffsetEngineLayer/*?*/ pushOffset(
+    double/*!*/ dx,
+    double/*!*/ dy, {
+    OffsetEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a transform operation onto the operation stack.
   ///
   /// The objects are transformed by the given matrix before rasterization.
   ///
   /// See [pop] for details about the operation stack.
-  TransformEngineLayer pushTransform(Float64List matrix4,
-      {TransformEngineLayer oldLayer});
+  TransformEngineLayer/*?*/ pushTransform(
+    Float64List/*!*/ matrix4, {
+    TransformEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a rectangular clip operation onto the operation stack.
   ///
@@ -134,24 +147,33 @@ abstract class SceneBuilder {
   ///
   /// See [pop] for details about the operation stack, and [Clip] for different clip modes.
   /// By default, the clip will be anti-aliased (clip = [Clip.antiAlias]).
-  ClipRectEngineLayer pushClipRect(Rect rect,
-      {Clip clipBehavior = Clip.antiAlias, ClipRectEngineLayer oldLayer});
+  ClipRectEngineLayer/*?*/ pushClipRect(
+    Rect/*!*/ rect, {
+    Clip/*!*/ clipBehavior = Clip.antiAlias,
+    ClipRectEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a rounded-rectangular clip operation onto the operation stack.
   ///
   /// Rasterization outside the given rounded rectangle is discarded.
   ///
   /// See [pop] for details about the operation stack.
-  ClipRRectEngineLayer pushClipRRect(RRect rrect,
-      {Clip clipBehavior, ClipRRectEngineLayer oldLayer});
+  ClipRRectEngineLayer/*?*/ pushClipRRect(
+    RRect/*!*/ rrect, {
+    Clip/*!*/ clipBehavior,
+    ClipRRectEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a path clip operation onto the operation stack.
   ///
   /// Rasterization outside the given path is discarded.
   ///
   /// See [pop] for details about the operation stack.
-  ClipPathEngineLayer pushClipPath(Path path,
-      {Clip clipBehavior = Clip.antiAlias, ClipPathEngineLayer oldLayer});
+  ClipPathEngineLayer/*?*/ pushClipPath(
+    Path/*!*/ path, {
+    Clip/*!*/ clipBehavior = Clip.antiAlias,
+    ClipPathEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes an opacity operation onto the operation stack.
   ///
@@ -161,8 +183,11 @@ abstract class SceneBuilder {
   /// opacity).
   ///
   /// See [pop] for details about the operation stack.
-  OpacityEngineLayer pushOpacity(int alpha,
-      {Offset offset = Offset.zero, OpacityEngineLayer oldLayer});
+  OpacityEngineLayer/*?*/ pushOpacity(
+    int/*!*/ alpha, {
+    Offset/*!*/ offset = Offset.zero,
+    OpacityEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a color filter operation onto the operation stack.
   ///
@@ -174,8 +199,25 @@ abstract class SceneBuilder {
   /// {@macro dart.ui.sceneBuilder.oldLayerVsRetained}
   ///
   /// See [pop] for details about the operation stack.
-  ColorFilterEngineLayer pushColorFilter(ColorFilter filter,
-      {ColorFilterEngineLayer oldLayer});
+  ColorFilterEngineLayer/*?*/ pushColorFilter(
+    ColorFilter/*!*/ filter, {
+    ColorFilterEngineLayer/*?*/ oldLayer,
+  });
+
+  /// Pushes an image filter operation onto the operation stack.
+  ///
+  /// The given filter is applied to the children's rasterization before compositing them into
+  /// the scene.
+  ///
+  /// {@macro dart.ui.sceneBuilder.oldLayer}
+  ///
+  /// {@macro dart.ui.sceneBuilder.oldLayerVsRetained}
+  ///
+  /// See [pop] for details about the operation stack.
+  ImageFilterEngineLayer/*?*/ pushImageFilter(
+    ImageFilter/*!*/ filter, {
+    ImageFilterEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a backdrop filter operation onto the operation stack.
   ///
@@ -183,8 +225,10 @@ abstract class SceneBuilder {
   /// rasterizing the given objects.
   ///
   /// See [pop] for details about the operation stack.
-  BackdropFilterEngineLayer pushBackdropFilter(ImageFilter filter,
-      {BackdropFilterEngineLayer oldLayer});
+  BackdropFilterEngineLayer/*?*/ pushBackdropFilter(
+    ImageFilter/*!*/ filter, {
+    BackdropFilterEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a shader mask operation onto the operation stack.
   ///
@@ -192,9 +236,12 @@ abstract class SceneBuilder {
   /// rectangle using the given blend mode.
   ///
   /// See [pop] for details about the operation stack.
-  ShaderMaskEngineLayer pushShaderMask(
-      Shader shader, Rect maskRect, BlendMode blendMode,
-      {ShaderMaskEngineLayer oldLayer});
+  ShaderMaskEngineLayer/*?*/ pushShaderMask(
+    Shader/*!*/ shader,
+    Rect/*!*/ maskRect,
+    BlendMode/*!*/ blendMode, {
+    ShaderMaskEngineLayer/*?*/ oldLayer,
+  });
 
   /// Pushes a physical layer operation for an arbitrary shape onto the
   /// operation stack.
@@ -208,13 +255,13 @@ abstract class SceneBuilder {
   /// color of the layer background.
   ///
   /// See [pop] for details about the operation stack, and [Clip] for different clip modes.
-  PhysicalShapeEngineLayer pushPhysicalShape({
-    Path path,
-    double elevation,
-    Color color,
-    Color shadowColor,
-    Clip clipBehavior = Clip.none,
-    PhysicalShapeEngineLayer oldLayer,
+  PhysicalShapeEngineLayer/*?*/ pushPhysicalShape({
+    Path/*!*/ path,
+    double/*!*/ elevation,
+    Color/*!*/ color,
+    Color/*?*/ shadowColor,
+    Clip/*!*/ clipBehavior = Clip.none,
+    PhysicalShapeEngineLayer/*?*/ oldLayer,
   });
 
   /// Add a retained engine layer subtree from previous frames.
@@ -225,7 +272,7 @@ abstract class SceneBuilder {
   /// Therefore, when implementing a subclass of the [Layer] concept defined in
   /// the rendering layer of Flutter's framework, once this is called, there's
   /// no need to call [addToScene] for its children layers.
-  void addRetained(EngineLayer retainedLayer);
+  void addRetained(EngineLayer/*!*/ retainedLayer);
 
   /// Ends the effect of the most recently pushed operation.
   ///
@@ -242,8 +289,8 @@ abstract class SceneBuilder {
   /// controls where the statistics are displayed.
   ///
   /// enabledOptions is a bit field with the following bits defined:
-  ///  - 0x01: displayRasterizerStatistics - show GPU thread frame time
-  ///  - 0x02: visualizeRasterizerStatistics - graph GPU thread frame times
+  ///  - 0x01: displayRasterizerStatistics - show raster thread frame time
+  ///  - 0x02: visualizeRasterizerStatistics - graph raster thread frame times
   ///  - 0x04: displayEngineStatistics - show UI thread frame time
   ///  - 0x08: visualizeEngineStatistics - graph UI thread frame times
   /// Set enabledOptions to 0x0F to enable all the currently defined features.
@@ -251,34 +298,36 @@ abstract class SceneBuilder {
   /// The "UI thread" is the thread that includes all the execution of
   /// the main Dart isolate (the isolate that can call
   /// [Window.render]). The UI thread frame time is the total time
-  /// spent executing the [Window.onBeginFrame] callback. The "GPU
+  /// spent executing the [Window.onBeginFrame] callback. The "raster
   /// thread" is the thread (running on the CPU) that subsequently
   /// processes the [Scene] provided by the Dart code to turn it into
   /// GPU commands and send it to the GPU.
   ///
   /// See also the [PerformanceOverlayOption] enum in the rendering library.
   /// for more details.
-  void addPerformanceOverlay(int enabledOptions, Rect bounds);
+  void addPerformanceOverlay(int/*!*/ enabledOptions, Rect/*!*/ bounds);
 
   /// Adds a [Picture] to the scene.
   ///
   /// The picture is rasterized at the given offset.
   void addPicture(
-    Offset offset,
-    Picture picture, {
-    bool isComplexHint = false,
-    bool willChangeHint = false,
+    Offset/*!*/ offset,
+    Picture/*!*/ picture, {
+    bool/*!*/ isComplexHint = false,
+    bool/*!*/ willChangeHint = false,
   });
 
   /// Adds a backend texture to the scene.
   ///
   /// The texture is scaled to the given size and rasterized at the given
   /// offset.
-  void addTexture(int textureId,
-      {Offset offset = Offset.zero,
-      double width = 0.0,
-      double height = 0.0,
-      bool freeze = false});
+  void addTexture(
+    int/*!*/ textureId, {
+    Offset/*!*/ offset = Offset.zero,
+    double/*!*/ width = 0.0,
+    double/*!*/ height = 0.0,
+    bool/*!*/ freeze = false,
+  });
 
   /// Adds a platform view (e.g an iOS UIView) to the scene.
   ///
@@ -297,20 +346,21 @@ abstract class SceneBuilder {
   /// embedded UIView. In addition to that, on iOS versions greater than 9, the Flutter frames are
   /// synchronized with the UIView frames adding additional performance overhead.
   void addPlatformView(
-    int viewId, {
-    Offset offset = Offset.zero,
-    double width = 0.0,
-    double height = 0.0,
+    int/*!*/ viewId, {
+    Offset/*!*/ offset = Offset.zero,
+    double/*!*/ width = 0.0,
+    double/*!*/ height = 0.0,
   });
 
   /// (Fuchsia-only) Adds a scene rendered by another application to the scene
   /// for this application.
-  void addChildScene(
-      {Offset offset = Offset.zero,
-      double width = 0.0,
-      double height = 0.0,
-      SceneHost sceneHost,
-      bool hitTestable = true});
+  void addChildScene({
+    Offset/*!*/ offset = Offset.zero,
+    double/*!*/ width = 0.0,
+    double/*!*/ height = 0.0,
+    SceneHost/*!*/ sceneHost,
+    bool/*!*/ hitTestable = true,
+  });
 
   /// Sets a threshold after which additional debugging information should be
   /// recorded.
@@ -319,7 +369,7 @@ abstract class SceneBuilder {
   /// interested in using this feature, please contact [flutter-dev](https://groups.google.com/forum/#!forum/flutter-dev).
   /// We'll hopefully be able to figure out how to make this feature more useful
   /// to you.
-  void setRasterizerTracingThreshold(int frameInterval);
+  void setRasterizerTracingThreshold(int/*!*/ frameInterval);
 
   /// Sets whether the raster cache should checkerboard cached entries. This is
   /// only useful for debugging purposes.
@@ -337,13 +387,13 @@ abstract class SceneBuilder {
   ///
   /// Currently this interface is difficult to use by end-developers. If you're
   /// interested in using this feature, please contact [flutter-dev](https://groups.google.com/forum/#!forum/flutter-dev).
-  void setCheckerboardRasterCacheImages(bool checkerboard);
+  void setCheckerboardRasterCacheImages(bool/*!*/ checkerboard);
 
   /// Sets whether the compositor should checkerboard layers that are rendered
   /// to offscreen bitmaps.
   ///
   /// This is only useful for debugging purposes.
-  void setCheckerboardOffscreenLayers(bool checkerboard);
+  void setCheckerboardOffscreenLayers(bool/*!*/ checkerboard);
 
   /// Finishes building the scene.
   ///
@@ -353,12 +403,19 @@ abstract class SceneBuilder {
   ///
   /// After calling this function, the scene builder object is invalid and
   /// cannot be used further.
-  Scene build();
+  Scene/*!*/ build();
 
   /// Set properties on the linked scene.  These properties include its bounds,
   /// as well as whether it can be the target of focus events or not.
-  void setProperties(double width, double height, double insetTop,
-      double insetRight, double insetBottom, double insetLeft, bool focusable);
+  void setProperties(
+    double/*!*/ width,
+    double/*!*/ height,
+    double/*!*/ insetTop,
+    double/*!*/ insetRight,
+    double/*!*/ insetBottom,
+    double/*!*/ insetLeft,
+    bool/*!*/ focusable,
+  );
 }
 
 /// A handle for the framework to hold and retain an engine layer across frames.
@@ -378,10 +435,11 @@ class SceneHost {
   ///
   /// The SceneHost takes ownership of the provided ViewHolder token.
   SceneHost(
-      dynamic viewHolderToken,
-      void Function() viewConnectedCallback,
-      void Function() viewDisconnectedCallback,
-      void Function(bool) viewStateChangedCallback);
+    dynamic viewHolderToken,
+    void Function()/*!*/ viewConnectedCallback,
+    void Function()/*!*/ viewDisconnectedCallback,
+    void Function(bool/*!*/)/*!*/ viewStateChangedCallback,
+  );
 
   /// Releases the resources associated with the SceneHost.
   ///
@@ -390,8 +448,15 @@ class SceneHost {
 
   /// Set properties on the linked scene.  These properties include its bounds,
   /// as well as whether it can be the target of focus events or not.
-  void setProperties(double width, double height, double insetTop,
-      double insetRight, double insetBottom, double insetLeft, bool focusable) {
+  void setProperties(
+    double/*!*/ width,
+    double/*!*/ height,
+    double/*!*/ insetTop,
+    double/*!*/ insetRight,
+    double/*!*/ insetBottom,
+    double/*!*/ insetLeft,
+    bool/*!*/ focusable,
+  ) {
     throw UnimplementedError();
   }
 }

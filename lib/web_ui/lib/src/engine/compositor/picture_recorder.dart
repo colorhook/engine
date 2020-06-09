@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.6
 part of engine;
 
 class SkPictureRecorder implements ui.PictureRecorder {
@@ -14,7 +15,7 @@ class SkPictureRecorder implements ui.PictureRecorder {
     _recorder = js.JsObject(canvasKit['SkPictureRecorder']);
     final js.JsObject skRect = js.JsObject(canvasKit['LTRBRect'],
         <double>[bounds.left, bounds.top, bounds.right, bounds.bottom]);
-    final js.JsObject skCanvas =
+    final js.JsObject/*!*/ skCanvas =
         _recorder.callMethod('beginRecording', <js.JsObject>[skRect]);
     _recordingCanvas = SkCanvas(skCanvas);
     return _recordingCanvas;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.6
 part of engine;
 
 /// An implementation of [ui.Path] which is backed by an `SkPath`.
@@ -10,14 +11,18 @@ part of engine;
 class SkPath implements ui.Path {
   js.JsObject _skPath;
 
+  /// Cached constructor function for `SkPath`, so we don't have to look it up
+  /// every time we construct a new path.
+  static final js.JsFunction _skPathConstructor = canvasKit['SkPath'];
+
   SkPath() {
-    _skPath = js.JsObject(canvasKit['SkPath']);
+    _skPath = js.JsObject(_skPathConstructor);
     fillType = ui.PathFillType.nonZero;
   }
 
-  // TODO(yjbanov): implement: https://github.com/flutter/flutter/issues/46812
   SkPath.from(SkPath other) {
-    throw UnimplementedError('SkPath.from is not implemented in the CanvasKit backend');
+    _skPath = js.JsObject(_skPathConstructor, <js.JsObject>[other._skPath]);
+    fillType = other.fillType;
   }
 
   SkPath._fromSkPath(js.JsObject skPath) : _skPath = skPath;
@@ -56,17 +61,17 @@ class SkPath implements ui.Path {
 
   @override
   void addOval(ui.Rect oval) {
-    _skPath.callMethod('addOval', <dynamic>[makeSkRect(oval), true, 0]);
+    _skPath.callMethod('addOval', <dynamic>[makeSkRect(oval), false, 1]);
   }
 
   @override
   void addPath(ui.Path path, ui.Offset offset, {Float64List matrix4}) {
     List<double> skMatrix;
     if (matrix4 == null) {
-      skMatrix = makeSkMatrix(
+      skMatrix = makeSkMatrixFromFloat32(
           Matrix4.translationValues(offset.dx, offset.dy, 0.0).storage);
     } else {
-      skMatrix = makeSkMatrix(matrix4);
+      skMatrix = makeSkMatrixFromFloat64(matrix4);
       skMatrix[2] += offset.dx;
       skMatrix[5] += offset.dy;
     }
@@ -89,7 +94,8 @@ class SkPath implements ui.Path {
   @override
   void addPolygon(List<ui.Offset> points, bool close) {
     assert(points != null);
-    final Float32List encodedPoints = encodePointList(points);
+    // TODO(hterkelsen): https://github.com/flutter/flutter/issues/58824
+    final List<List<double>> encodedPoints = encodePointList(points);
     _skPath.callMethod('addPoly', <dynamic>[encodedPoints, close]);
   }
 
@@ -174,10 +180,10 @@ class SkPath implements ui.Path {
   void extendWithPath(ui.Path path, ui.Offset offset, {Float64List matrix4}) {
     List<double> skMatrix;
     if (matrix4 == null) {
-      skMatrix = makeSkMatrix(
+      skMatrix = makeSkMatrixFromFloat32(
           Matrix4.translationValues(offset.dx, offset.dy, 0.0).storage);
     } else {
-      skMatrix = makeSkMatrix(matrix4);
+      skMatrix = makeSkMatrixFromFloat64(matrix4);
       skMatrix[2] += offset.dx;
       skMatrix[5] += offset.dy;
     }
@@ -315,11 +321,16 @@ class SkPath implements ui.Path {
   @override
   ui.Path transform(Float64List matrix4) {
     final js.JsObject newPath = _skPath.callMethod('copy');
-    newPath.callMethod('transform', <js.JsArray>[makeSkMatrix(matrix4)]);
+    newPath.callMethod('transform', <js.JsArray>[makeSkMatrixFromFloat64(matrix4)]);
     return SkPath._fromSkPath(newPath);
   }
 
   String toSvgString() {
     return _skPath.callMethod('toSVGString');
+  }
+
+  /// Return `true` if this path contains no segments.
+  bool get isEmpty {
+    return _skPath.callMethod('isEmpty');
   }
 }

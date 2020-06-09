@@ -12,6 +12,7 @@
 #include "flutter/lib/ui/compositing/scene_host.h"
 #include "flutter/lib/ui/window/pointer_data.h"
 #include "flutter/lib/ui/window/window.h"
+#include "flutter_runner_product_configuration.h"
 #include "logging.h"
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
@@ -80,7 +81,6 @@ void SetInterfaceErrorHandler(fidl::Binding<T>& binding, std::string name) {
 PlatformView::PlatformView(
     flutter::PlatformView::Delegate& delegate,
     std::string debug_label,
-    fuchsia::ui::views::ViewRefControl view_ref_control,
     fuchsia::ui::views::ViewRef view_ref,
     flutter::TaskRunners task_runners,
     std::shared_ptr<sys::ServiceDirectory> runner_services,
@@ -92,10 +92,10 @@ PlatformView::PlatformView(
     OnMetricsUpdate session_metrics_did_change_callback,
     OnSizeChangeHint session_size_change_hint_callback,
     OnEnableWireframe wireframe_enabled_callback,
-    zx_handle_t vsync_event_handle)
+    zx_handle_t vsync_event_handle,
+    FlutterRunnerProductConfiguration product_config)
     : flutter::PlatformView(delegate, std::move(task_runners)),
       debug_label_(std::move(debug_label)),
-      view_ref_control_(std::move(view_ref_control)),
       view_ref_(std::move(view_ref)),
       session_listener_binding_(this, std::move(session_listener_request)),
       session_listener_error_callback_(
@@ -105,7 +105,8 @@ PlatformView::PlatformView(
       wireframe_enabled_callback_(std::move(wireframe_enabled_callback)),
       ime_client_(this),
       surface_(std::make_unique<Surface>(debug_label_)),
-      vsync_event_handle_(vsync_event_handle) {
+      vsync_event_handle_(vsync_event_handle),
+      product_config_(product_config) {
   // Register all error handlers.
   SetInterfaceErrorHandler(session_listener_binding_, "SessionListener");
   SetInterfaceErrorHandler(ime_, "Input Method Editor");
@@ -563,13 +564,14 @@ void PlatformView::DeactivateIme() {
 // |flutter::PlatformView|
 std::unique_ptr<flutter::VsyncWaiter> PlatformView::CreateVSyncWaiter() {
   return std::make_unique<flutter_runner::VsyncWaiter>(
-      debug_label_, vsync_event_handle_, task_runners_);
+      debug_label_, vsync_event_handle_, task_runners_,
+      product_config_.get_vsync_offset());
 }
 
 // |flutter::PlatformView|
 std::unique_ptr<flutter::Surface> PlatformView::CreateRenderingSurface() {
   // This platform does not repeatly lose and gain a surface connection. So the
-  // surface is setup once during platform view setup and and returned to the
+  // surface is setup once during platform view setup and returned to the
   // shell on the initial (and only) |NotifyCreated| call.
   return std::move(surface_);
 }
@@ -580,12 +582,18 @@ void PlatformView::HandlePlatformMessage(
   if (!message) {
     return;
   }
-  auto found = platform_message_handlers_.find(message->channel());
+  const std::string channel = message->channel();
+  auto found = platform_message_handlers_.find(channel);
   if (found == platform_message_handlers_.end()) {
-    FML_LOG(ERROR)
-        << "Platform view received message on channel '" << message->channel()
-        << "' with no registered handler. And empty response will be "
-           "generated. Please implement the native message handler.";
+    const bool already_errored = unregistered_channels_.count(channel);
+    if (!already_errored) {
+      FML_LOG(INFO)
+          << "Platform view received message on channel '" << message->channel()
+          << "' with no registered handler. And empty response will be "
+             "generated. Please implement the native message handler. This "
+             "message will appear only once per channel.";
+      unregistered_channels_.insert(channel);
+    }
     flutter::PlatformView::HandlePlatformMessage(std::move(message));
     return;
   }
@@ -602,6 +610,13 @@ void PlatformView::SetSemanticsEnabled(bool enabled) {
   } else {
     SetAccessibilityFeatures(0);
   }
+}
+
+// |flutter::PlatformView|
+// |flutter_runner::AccessibilityBridge::Delegate|
+void PlatformView::DispatchSemanticsAction(int32_t node_id,
+                                           flutter::SemanticsAction action) {
+  flutter::PlatformView::DispatchSemanticsAction(node_id, action, {});
 }
 
 // |flutter::PlatformView|

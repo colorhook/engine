@@ -10,6 +10,7 @@
 #include "flutter/fml/platform/android/scoped_java_ref.h"
 #include "flutter/shell/gpu/gpu_surface_software.h"
 #include "flutter/shell/platform/android/android_surface.h"
+#include "flutter/shell/platform/android/external_view_embedder/external_view_embedder.h"
 
 namespace flutter {
 
@@ -30,13 +31,13 @@ class AndroidSurfaceSoftware final : public AndroidSurface,
   bool ResourceContextClearCurrent() override;
 
   // |AndroidSurface|
-  std::unique_ptr<Surface> CreateGPUSurface() override;
+  std::unique_ptr<Surface> CreateGPUSurface(GrContext* gr_context) override;
 
   // |AndroidSurface|
   void TeardownOnScreenContext() override;
 
   // |AndroidSurface|
-  bool OnScreenSurfaceResize(const SkISize& size) const override;
+  bool OnScreenSurfaceResize(const SkISize& size) override;
 
   // |AndroidSurface|
   bool SetNativeWindow(fml::RefPtr<AndroidNativeWindow> window) override;
@@ -55,6 +56,7 @@ class AndroidSurfaceSoftware final : public AndroidSurface,
   fml::RefPtr<AndroidNativeWindow> native_window_;
   SkColorType target_color_type_;
   SkAlphaType target_alpha_type_;
+  std::unique_ptr<AndroidExternalViewEmbedder> external_view_embedder_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(AndroidSurfaceSoftware);
 };

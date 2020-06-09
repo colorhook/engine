@@ -1,17 +1,19 @@
 package io.flutter.embedding.engine;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener;
+import io.flutter.plugin.platform.PlatformViewsController;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener;
-
-import static org.junit.Assert.assertEquals;
-
-@Config(manifest=Config.NONE)
+@Config(manifest = Config.NONE)
 @RunWith(RobolectricTestRunner.class)
 public class FlutterJNITest {
   @Test
@@ -20,16 +22,17 @@ public class FlutterJNITest {
     FlutterJNI flutterJNI = new FlutterJNI();
 
     AtomicInteger callbackInvocationCount = new AtomicInteger(0);
-    FlutterUiDisplayListener callback = new FlutterUiDisplayListener() {
-      @Override
-      public void onFlutterUiDisplayed() {
-        callbackInvocationCount.incrementAndGet();
-        flutterJNI.removeIsDisplayingFlutterUiListener(this);
-      }
+    FlutterUiDisplayListener callback =
+        new FlutterUiDisplayListener() {
+          @Override
+          public void onFlutterUiDisplayed() {
+            callbackInvocationCount.incrementAndGet();
+            flutterJNI.removeIsDisplayingFlutterUiListener(this);
+          }
 
-      @Override
-      public void onFlutterUiNoLongerDisplayed() {}
-    };
+          @Override
+          public void onFlutterUiNoLongerDisplayed() {}
+        };
     flutterJNI.addIsDisplayingFlutterUiListener(callback);
 
     // --- Execute Test ---
@@ -44,5 +47,22 @@ public class FlutterJNITest {
 
     // --- Verify Results ---
     assertEquals(1, callbackInvocationCount.get());
+  }
+
+  @Test
+  public void onDisplayPlatformView__callsPlatformViewsController() {
+    PlatformViewsController platformViewsController = mock(PlatformViewsController.class);
+
+    FlutterJNI flutterJNI = new FlutterJNI();
+    flutterJNI.setPlatformViewsController(platformViewsController);
+
+    // --- Execute Test ---
+    flutterJNI.onDisplayPlatformView(
+        /*viewId=*/ 1, /*x=*/ 10, /*y=*/ 20, /*width=*/ 100, /*height=*/ 200);
+
+    // --- Verify Results ---
+    verify(platformViewsController, times(1))
+        .onDisplayPlatformView(
+            /*viewId=*/ 1, /*x=*/ 10, /*y=*/ 20, /*width=*/ 100, /*height=*/ 200);
   }
 }

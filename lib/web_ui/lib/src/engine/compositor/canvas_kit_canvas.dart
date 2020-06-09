@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.6
 part of engine;
 
 /// An implementation of [ui.Canvas] that is backed by a CanvasKit canvas.
@@ -83,10 +84,10 @@ class CanvasKitCanvas implements ui.Canvas {
     if (matrix4.length != 16) {
       throw ArgumentError('"matrix4" must have 16 entries.');
     }
-    _transform(matrix4);
+    _transform(toMatrix32(matrix4));
   }
 
-  void _transform(Float64List matrix4) {
+  void _transform(Float32List matrix4) {
     _canvas.transform(matrix4);
   }
 
@@ -144,7 +145,7 @@ class CanvasKitCanvas implements ui.Canvas {
     _drawLine(p1, p2, paint);
   }
 
-  void _drawLine(ui.Offset p1, ui.Offset p2, paint) {
+  void _drawLine(ui.Offset p1, ui.Offset p2, ui.Paint paint) {
     _canvas.drawLine(p1, p2, paint);
   }
 
@@ -318,10 +319,11 @@ class CanvasKitCanvas implements ui.Canvas {
     if (points.length % 2 != 0) {
       throw ArgumentError('"points" must have an even number of values.');
     }
-    _drawPoints(paint, pointMode, points);
+    _drawPoints(paint, pointMode, encodeRawPointList(points));
   }
 
-  void _drawPoints(ui.Paint paint, ui.PointMode pointMode, Float32List points) {
+  void _drawPoints(
+      ui.Paint paint, ui.PointMode pointMode, List<List<double>> points) {
     _canvas.drawPoints(paint, pointMode, points);
   }
 
@@ -385,8 +387,8 @@ class CanvasKitCanvas implements ui.Canvas {
       rectBuffer[index3] = rect.bottom;
     }
 
-    final Int32List colorBuffer =
-        colors.isEmpty ? null : _encodeColorList(colors);
+    final js.JsArray<Float32List> colorBuffer =
+        colors.isEmpty ? null : makeColorList(colors);
 
     _drawAtlas(
         paint, atlas, rstTransformBuffer, rectBuffer, colorBuffer, blendMode);
@@ -418,7 +420,8 @@ class CanvasKitCanvas implements ui.Canvas {
       throw ArgumentError(
           'If non-null, "colors" length must be one fourth the length of "rstTransforms" and "rects".');
 
-    _drawAtlas(paint, atlas, rstTransforms, rects, colors, blendMode);
+    _drawAtlas(paint, atlas, rstTransforms, rects, _encodeRawColorList(colors),
+        blendMode);
   }
 
   // TODO(hterkelsen): Pass a cull_rect once CanvasKit supports that.
@@ -427,7 +430,7 @@ class CanvasKitCanvas implements ui.Canvas {
     ui.Image atlas,
     Float32List rstTransforms,
     Float32List rects,
-    Int32List colors,
+    js.JsArray<Float32List> colors,
     ui.BlendMode blendMode,
   ) {
     _canvas.drawAtlasRaw(paint, atlas, rstTransforms, rects, colors, blendMode);

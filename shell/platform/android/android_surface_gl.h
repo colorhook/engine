@@ -13,29 +13,28 @@
 #include "flutter/shell/platform/android/android_context_gl.h"
 #include "flutter/shell/platform/android/android_environment_gl.h"
 #include "flutter/shell/platform/android/android_surface.h"
+#include "flutter/shell/platform/android/external_view_embedder/external_view_embedder.h"
 
 namespace flutter {
 
 class AndroidSurfaceGL final : public GPUSurfaceGLDelegate,
                                public AndroidSurface {
  public:
-  AndroidSurfaceGL();
+  AndroidSurfaceGL(std::shared_ptr<AndroidContext> android_context);
 
   ~AndroidSurfaceGL() override;
-
-  bool IsOffscreenContextValid() const;
 
   // |AndroidSurface|
   bool IsValid() const override;
 
   // |AndroidSurface|
-  std::unique_ptr<Surface> CreateGPUSurface() override;
+  std::unique_ptr<Surface> CreateGPUSurface(GrContext* gr_context) override;
 
   // |AndroidSurface|
   void TeardownOnScreenContext() override;
 
   // |AndroidSurface|
-  bool OnScreenSurfaceResize(const SkISize& size) const override;
+  bool OnScreenSurfaceResize(const SkISize& size) override;
 
   // |AndroidSurface|
   bool ResourceContextMakeCurrent() override;
@@ -47,7 +46,7 @@ class AndroidSurfaceGL final : public GPUSurfaceGLDelegate,
   bool SetNativeWindow(fml::RefPtr<AndroidNativeWindow> window) override;
 
   // |GPUSurfaceGLDelegate|
-  bool GLContextMakeCurrent() override;
+  std::unique_ptr<GLContextResult> GLContextMakeCurrent() override;
 
   // |GPUSurfaceGLDelegate|
   bool GLContextClearCurrent() override;
@@ -62,8 +61,11 @@ class AndroidSurfaceGL final : public GPUSurfaceGLDelegate,
   ExternalViewEmbedder* GetExternalViewEmbedder() override;
 
  private:
-  fml::RefPtr<AndroidContextGL> onscreen_context_;
-  fml::RefPtr<AndroidContextGL> offscreen_context_;
+  fml::RefPtr<AndroidNativeWindow> native_window_;
+  std::unique_ptr<AndroidExternalViewEmbedder> external_view_embedder_;
+  std::shared_ptr<AndroidContextGL> android_context_;
+  EGLSurface onscreen_surface_;
+  EGLSurface offscreen_surface_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(AndroidSurfaceGL);
 };
