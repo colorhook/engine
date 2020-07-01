@@ -1,16 +1,10 @@
-// Copyright 2013 The Flutter Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #ifndef FLUTTER_LIB_UI_MediaRecorder_H_
 #define FLUTTER_LIB_UI_MediaRecorder_H_
 
-#include <map>
-#include <mutex>
-#include <string>
-
-#include "flutter/fml/macros.h"
-#include "third_party/dart/runtime/include/dart_api.h"
+#include "flutter/lib/ui/dart_wrapper.h"
+#include "flutter/fml/thread.h"
+#include "flutter/fml/task_runner.h"
+#include "flutter/lib/ui/media/encoder.h"
 
 namespace tonic {
 class DartLibraryNatives;
@@ -20,24 +14,34 @@ namespace flutter {
 
 class Scene;
 
-class MediaRecorder {
+class MediaRecorder final : public RefCountedDartWrappable<MediaRecorder> {
+  DEFINE_WRAPPERTYPEINFO();
+  FML_FRIEND_MAKE_REF_COUNTED(MediaRecorder);
+
  public:
-  MediaRecorder();
+  static fml::RefPtr<MediaRecorder> Create(Dart_Handle handle);
 
-  ~MediaRecorder();
-
-  void Start();
-  void Stop();
-  void Render(Scene* scene);
+  ~MediaRecorder() override;
 
 
-  static MediaRecorder *instance;
+  void start();
+  void render(Dart_Handle handle);
+  void stop();
+  void RequestFrame();
+
   static void RegisterNatives(tonic::DartLibraryNatives* natives);
  private:
 
-  mutable std::mutex mutex_;
+  MediaRecorder(Dart_Handle callback);
+  int fps_ = 25;
 
 
+  std::unique_ptr<fml::Thread> thread_;
+  tonic::DartPersistentValue callback_;
+  MediaEncoder* encoder_;
+
+  //FML_FRIEND_MAKE_REF_COUNTED(MediaRecorder);
+  //FML_FRIEND_REF_COUNTED_THREAD_SAFE(MediaRecorder);
   FML_DISALLOW_COPY_AND_ASSIGN(MediaRecorder);
 };
 

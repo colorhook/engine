@@ -7,6 +7,25 @@ import("//flutter/common/config.gni")
 import("//flutter/testing/testing.gni")
 
 source_set("ui") {
+
+  include_dirs = [
+    "/usr/local/Cellar/ffmpeg/4.2.2_3/include"
+  ]
+
+  lib_dirs = [
+    "/usr/local/Cellar/ffmpeg/4.2.2_3/lib",
+  ]
+
+  libs = [
+    "avformat",
+    "avcodec",
+    "avutil",
+    "avfilter",
+    "swscale",
+    "swresample",
+    "postproc",
+  ]
+
   sources = [
     "compositing/scene.cc",
     "compositing/scene.h",
@@ -107,6 +126,8 @@ source_set("ui") {
     "window/window.h",
     "media/media.h",
     "media/media.cc",
+    "media/encoder.h",
+    "media/encoder.cc",
   ]
 
   public_configs = [ "//flutter:config" ]
